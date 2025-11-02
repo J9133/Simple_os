@@ -2,30 +2,25 @@
 [org 0x7c00]
 
 start:
+    mov si, msg
+    call print
     xor ax, ax
     mov ss, ax
     mov sp, 0x7c00
     xor ax, ax
     mov ds, ax
-    mov si, msg
-    call print
 
-    xor ax, ax
+    mov ax, 0x0000
     mov es, ax
     mov bx, 0x8000
     mov ah, 0x02
-    mov al, 7
+    mov al, 128
     mov ch, 0
     mov cl, 2
     mov dh, 0
     int 0x13
-    jc disk_error
-    jmp 0x0000:0x8000
 
-disk_error:
-    mov si, err
-    call print
-    jmp $
+    jmp 0x0000:0x8000
 
 print:
     lodsb
@@ -37,7 +32,6 @@ print:
 .done:
     ret
 
-msg db "Bootloader loaded...",0
-err db "Disk error",0
+msg db 'bootloader loaded...'
 times 510-($-$$) db 0
 dw 0xAA55
