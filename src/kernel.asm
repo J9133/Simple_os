@@ -19,6 +19,9 @@ command_find: times 64 db 0
 temp_command: times 50 db 0
 folder_stack: times 64 db 0
 folder_stack2: times 64 db 0
+path:
+	db '/folder/code'
+	times 52 db 0
 section .text
 
 start:
@@ -30,6 +33,9 @@ start:
 	mov ah, 0x00
 	mov al, 0x03
 	int 0x10
+	
+	mov si, path
+	call get_siz_pos
     add byte [file_count], 3
 	mov byte [folder], '/'
 	mov si, buffer
