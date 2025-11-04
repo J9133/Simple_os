@@ -20,7 +20,7 @@ temp_command: times 50 db 0
 folder_stack: times 64 db 0
 folder_stack2: times 64 db 0
 path:
-	db '/folder/code'
+	db '/file1'
 	times 52 db 0
 section .text
 
@@ -179,6 +179,11 @@ get_parent_name:
 
 get_siz_pos:
 	call get_name_path
+	mov si, file_parent_name
+	call print
+	call new_laen
+	mov si, file_name
+	call print
 	mov di, 8
 	mov si, 0
 	call clear_rig
@@ -269,9 +274,50 @@ get_name_path:
 		dec si
 		jmp .end_path
 	.pfound_name:
+		pop di
+		cmp si, di
+		je .mroot_dir
+		push di
+		mov di, 0
 		push si
 		inc si
 		jmp .mfound_name
+	.mroot_dir:
+		mov al, 0
+		mov di, 0
+		jmp .root_dir
+	.root_dir:
+		cmp di, 8
+		je .mroot_dir2
+		mov [file_name + di], al
+		inc di
+		jmp .root_dir
+	.mroot_dir2:
+		mov al, 0
+		mov di, 0
+		jmp .root_dir2
+	.root_dir2:
+		cmp di, 64
+		je .root_dir3
+		mov [file_parent_name + di], al
+		inc di
+		jmp .root_dir2
+	.root_dir3:
+		mov byte [file_parent_name + 0], '/'
+		jmp .mroot_dir4
+	.mroot_dir4:
+		mov al, 0
+		mov di, 0
+		inc si
+		jmp .root_dir4
+	.root_dir4:
+		cmp di, 9
+		je .done
+		mov al, [si]
+		mov [file_name + di], al
+		inc di
+		inc si
+		jmp .root_dir4
 	.mfound_name:
 		mov al, 0
 		cmp di, 64
