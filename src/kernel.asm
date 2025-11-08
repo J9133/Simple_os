@@ -1386,7 +1386,7 @@ com_nano:
 		add byte [fx], 5
 		jmp .cpfx_loop
 	.cpfx_loop:
-		mov bx, [fx]
+		mov bl, [fx]
 		mov al, [command + bx]
 		cmp al, 0
 		je .mcp_loop
