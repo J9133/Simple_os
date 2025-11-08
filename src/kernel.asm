@@ -19,8 +19,9 @@ command_find: times 64 db 0
 temp_command: times 50 db 0
 folder_stack: times 64 db 0
 folder_stack2: times 64 db 0
+temp_di: dw 0
 path:
-	db '/file1'
+	db '/folder/codse'
 	times 52 db 0
 section .text
 
@@ -30,16 +31,16 @@ start:
 	mov ds, ax
 	mov si, msg
 	call print
+	mov sp, 0xFFFE 
 	mov ah, 0x00
 	mov al, 0x03
 	int 0x10
-	
+    add byte [file_count], 3
 	mov si, path
 	call get_siz_pos
-    add byte [file_count], 3
 	mov byte [folder], '/'
 	mov si, buffer
-	call input
+	jmp input
 	jmp $
 
 file:
@@ -55,7 +56,7 @@ new_file_table:
     entry0_resv: dw 0
 
 file_table:
-    db 'file1',0,0,0
+	db 'file1',0,0,0
     db '/',0
     times 62 db 0
     dw 1
@@ -179,83 +180,86 @@ get_parent_name:
 
 get_siz_pos:
 	call get_name_path
-	mov si, file_parent_name
-	call print
-	call new_laen
-	mov si, file_name
-	call print
-	mov di, 8
+	mov di, 0
 	mov si, 0
 	call clear_rig
-    mov dx, 16 
-	.get_byts:
+	jmp .mcmp_name
+	.loop:
 		mov al, [file_table + di]
-		mov si, di
-		cmp di, dx
-		je .enter_file
-		cmp di, [fx]
+		cmp si, 0
+		je .mcmp_name
+		cmp si, 8
 		je .mcmp_path
+		cmp si, 80
+		je .next_file
+		inc si
 		inc di
-		jmp .get_byts
-	.enter_file:
+		jmp .loop
+	.next_file:
 		cmp cx, [file_count]
-		je .end_table
+		je .not_found
+		mov si, 0
 		inc cx
+		mov bx, 80
 		mov ax, cx
-		push cx
-		mov cx, 80
-		mul cx
-		mov [fx], ax
-		add word [fx], 8
-		mov dx, ax
-		add dx, 16
-		pop cx
-		jmp .get_byts
+		mul bx
+		mov di, 0
+		mov bx, ax
+		add di, bx
+		jmp .loop
 	.mcmp_path:
-		push di
-		push bx
-		xor bx, bx
-		mov di, [fx]
+		mov [temp_di], di
 		jmp .cmp_path
 	.cmp_path:
-		mov al, [file_table + di]
-		cmp al, [file_parent_name + bx]
-		jne .not_found
-		cmp bx, 64
-		je .found_path
+		cmp si, 72
+		je .found
+		mov al, [file_name + si]
+		cmp [file_table + di], al
+		jne .ecmp_path
 		inc di
-		inc bx
+		inc si
 		jmp .cmp_path
 	.ecmp_path:
-		pop bx
-		pop di
-		jmp .get_byts
+		mov di, [temp_di]
+		add di, 64
+		jmp .next_file
+	.mcmp_name:
+		mov [temp_di], di
+		mov si, 0
+		jmp .cmp_name
+	.cmp_name:
+		cmp si, 8
+		je .loop
+		mov al, [file_name + si]
+		cmp [file_table + di], al
+		jne .ecmp_name
+		inc di
+		inc si
+		jmp .cmp_name
+	.ecmp_name:
+		mov di, [temp_di]
+		add di, 8
+		jmp .next_file
 	.not_found:
-		pop bx
-		pop di
-    	jmp .enter_file 
-	.end_table:
 		ret
-	.found_path:
-		pop bx
-		pop di
-		mov ax, cx
-		push cx
-		mov cx, 80
-		mul cx
-		pop cx
-		mov si, ax
-		add si, 72
-		mov ax, [file_table + si]
-		mov [file_pos], ax
-		add si, 2
-		mov ax, [file_table + si]
-		mov [file_size], ax
-		add si, 2
-		mov al, [file_table + si]
-		mov [file_type], al
-		mov si, msg
-		call print
+	.found:
+		mov al, [file_table + di]
+		mov [file_pos], al
+		inc di
+		mov al, [file_table + di]
+		mov [file_size], al
+		mov ah, 0x0E
+		int 0x10
+		mov al, [file_pos]
+		int 0x10
+		mov di, 0
+		mov si, 0
+		xor ax, ax
+		mov ds, ax
+		mov es, ax
+		xor si, si
+		xor di, di
+		call clear_rig
 		ret
 
 get_name_path:
@@ -304,14 +308,12 @@ get_name_path:
 		jmp .root_dir2
 	.root_dir3:
 		mov byte [file_parent_name + 0], '/'
-		jmp .mroot_dir4
-	.mroot_dir4:
 		mov al, 0
 		mov di, 0
 		inc si
 		jmp .root_dir4
 	.root_dir4:
-		cmp di, 9
+		cmp di, 8
 		je .done
 		mov al, [si]
 		mov [file_name + di], al
@@ -365,8 +367,24 @@ get_name_path:
 	.done:
 		ret
 
+i:
+    mov si, file_data
+    mov cx, 60
+.print_loop:
+    cmp cx, 0
+    je .done
+    lodsb
+    mov ah, 0x0E
+    int 0x10
+    dec cx
+    jmp .print_loop
+.done:
+    ret
+
+
 input:
 	;call print_file_table_raw
+	call i
 	mov di, command
 	mov cx, 50
 	xor al, al
