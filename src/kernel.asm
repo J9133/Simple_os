@@ -1325,158 +1325,90 @@ com_mkdir:
 		jmp input
 
 com_nano:
-	mov di, file_name_find
-	mov cx, 8
-	xor al, al
-	rep stosb
-	mov si, command
-	add si, 5
-	mov di, file_name_find
-	xor cx, cx
-	.copy_name_check:
-		lodsb
-		cmp al, ' '
-		je .done_name_check
-		cmp al, 0
-		je .done_name_check
-		stosb
-		inc cx
-		cmp cx, 8
-		jl .copy_name_check
-	.done_name_check:
-		mov si, file_name_find
-		jmp .cmp_div
-	.cmp_div:
-		cmp byte [command + 5], '/'
-		je .div
+	call clear_rig
+    call new_laen
+	cmp byte [command + 5], 0
+	jne .root_dir
+	call print_file_table
+	jmp input
+	.root_dir:
 		mov di, 0
-		call clear_rig
-		jmp .nd1
-	.nd1:
+		mov si, 0
+		jmp .loop
+	.loop:
 		cmp bx, 64
-		je .mnd2
+		je .mloop2
 		mov al, [folder + di]
 		mov [folder_stack + di], al
 		inc di
 		inc bx
-		jmp .nd1
-	.mnd2:
-		mov si, 5
+		jmp .loop
+	.mloop2:
 		mov di, 0
-		call clear_rig
-		jmp .nd2
-	.nd2:
+		mov si, 5
+		xor bx, bx
+		jmp .loop2
+	.loop2:
+		cmp bx, 64
+		je .print_t
 		mov al, [command + si]
-		cmp al, 0
-		je .mnd3
+		cmp al, ' '
+		je .print_t
+		inc byte [fx]
 		mov [folder + di], al
 		inc si
 		inc di
-		jmp .nd2
-	.mnd3:
-		mov si, 0
-		mov di, 0
-		call clear_rig
-		call add_dir
-		mov si, folder
-		jmp .div
-	.div:
-		call get_siz_pos
-		cmp word [file_size], 0
-		je .cleanup
-		mov si, file_table
-		mov cx, [file_count]
-		xor bx, bx
-	.find_file_check:
-		push cx
-		push si
-		mov di, file_name_find
-		mov cx, 8
-		repe cmpsb
-		je .check_parent
-		pop si
-		add si, 80
-		pop cx
 		inc bx
-		loop .find_file_check
-		jmp .cleanup
-	.check_parent:
-		pop si
-		add si, 8
-		mov di, folder
-		mov cx, 64
-		repe cmpsb
-		pop cx
-		jne .cleanup
-	.start_edit:
-		mov di, file_name
-		mov cx, 8
-		xor al, al
-		rep stosb
-		mov word [file_pos], 0
-		mov word [file_size], 0
-		mov bx, 5
-		mov di, file_name
-	.read_name:
-		mov al, [command + bx]
-		cmp al, ' '
-		je .done_name
-		cmp al, 0
-		je .done_name
-		stosb
-		inc bx
-		jmp .read_name
-	.done_name:
-		inc bx
-		mov si, file_name
-		call get_siz_pos
-		mov di, file_data
-		add di, [file_pos]
-		push di
-		mov cx, [file_size]
-		xor al, al
-		rep stosb
-		pop di
-		mov si, command
-		add si, bx
-		mov cx, [file_size]
-	.read_data:
-		cmp cx, 0
-		je .done_data
-		lodsb
-		cmp al, 0
-		je .done_data
-		stosb
-		dec cx
-		jmp .read_data
-	.done_data:
-		mov di, file_name
-		mov cx, 8
-		xor al, al
-		rep stosb
-		mov word [file_pos], 0
-		mov word [file_size], 0
-		mov byte [file_type], 0
-		jmp .mrefolder
-	.cleanup:
-		mov di, file_name_find
-		mov cx, 8
-		xor al, al
-		rep stosb
-		jmp .mrefolder
+		jmp .loop2
+	.print_t:
+		cmp byte [command + 5], '/'
+		jne .m_add_dir
+		jmp .done_cpf
 	.mrefolder:
 		mov si, 0
 		mov di, 0
-		call clear_rig
+		xor bx, bx
 		jmp .refolder
 	.refolder:
 		cmp bx, 64
-		je input
-		mov al, [folder_stack + di]
-		mov [folder + di], al
-		inc di
+		je .done_cpf
+		mov al, [folder_stack + si]
+		mov [folder + si], al
+		inc si
 		inc bx
 		jmp .refolder
+	.m_add_dir:
+		call add_dir
+		jmp .done_cpf
+	.done_cpf:
+		call get_siz_pos
+		call clear_rig
+		add byte [fx], 5
+		jmp .cpfx_loop
+	.cpfx_loop:
+		mov bx, [fx]
+		mov al, [command + bx]
+		cmp al, 0
+		je .mcp_loop
+		inc byte [fx]
+		jmp .cpfx_loop
+	.mcp_loop:
+		mov di, [fx]
+		mov si, [file_pos]
+		xor bx, bx
+		jmp .cp_loop
+	.cp_loop:
+		mov al, [command + di]
+		mov [file_data + si], al
+		cmp bx, [file_size]
+		je .done
+		inc bx
+		inc si
+		inc di
+		jmp .cp_loop
+	.done:
+		call clear_rig
+		jmp input
 
 add_dir:
 	call clear_rig
